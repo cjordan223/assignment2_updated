@@ -172,55 +172,54 @@ public class SectionControllerUnitTest {
         assertEquals("grade not found 99999", errorMessage);
     }
 
-//    @Test
-//    // do you mock the date...?
-//    public void studentEnrollsIntoSection() throws Exception {
-//
-//        MockHttpServletResponse response;
-//
-//        // Enrollment data
-//        int studentId = 3;  // existing student
-//        int sectionNo = 9;  // existing section
-//
-//        // Ensure the section exists in the database
-//        Section section = sectionRepository.findById(sectionNo).orElse(null);
-//        assertNotNull(section);
-//
-//        // Ensure the current date is within the add period for the section
-//        Date now = new Date();
-//        if (now.before(section.getTerm().getAddDate()) || now.after(section.getTerm().getAddDeadline())) {
-//            throw new IllegalStateException("Current date is not within the add period for the section.");
-//        }
-//
-//        // Issue the POST request to enroll the student
-//        response = mvc.perform(
-//                        MockMvcRequestBuilders
-//                                .post("/enrollments/sections/" + sectionNo)
-//                                .param("studentId", String.valueOf(studentId))
-//                                .accept(MediaType.APPLICATION_JSON)
-//                                .contentType(MediaType.APPLICATION_JSON))
-//                .andReturn()
-//                .getResponse();
-//
-//        // Check the response code for 200 meaning OK
-//        assertEquals(200, response.getStatus());
-//
-//        // Check the response content
-//        EnrollmentDTO enrollment = fromJsonString(response.getContentAsString(), EnrollmentDTO.class);
-//
-//        // Ensure the enrollment ID is returned and is not zero
-//        assertNotEquals(0, enrollment.enrollmentId());
-//
-//        // Ensure the section and student details match
-//        assertEquals(sectionNo, enrollment.sectionNo());
-//        assertEquals(studentId, enrollment.studentId());
-//
-//        // Check the database for the enrollment
-//        Enrollment e = enrollmentRepository.findEnrollmentBySectionNoAndStudentId(sectionNo, studentId);
-//        assertNotNull(e);
-//        assertEquals(studentId, e.getStudent().getId());
-//        assertEquals(sectionNo, e.getSection().getSectionNo());
-//    }
+    @Test
+    public void studentEnrollsIntoSection() throws Exception {
+
+        MockHttpServletResponse response;
+
+        // Enrollment data
+        int studentId = 3;  // existing student
+        int sectionNo = 9;  // existing section
+
+        // Ensure the section exists in the database
+        Section section = sectionRepository.findById(sectionNo).orElse(null);
+        assertNotNull(section);
+
+        // Ensure the current date is within the add period for the section
+        Date now = new Date();
+        if (now.before(section.getTerm().getAddDate()) || now.after(section.getTerm().getAddDeadline())) {
+            throw new IllegalStateException("Current date is not within the add period for the section.");
+        }
+
+        // Issue the POST request to enroll the student
+        response = mvc.perform(
+                        MockMvcRequestBuilders
+                                .post("/enrollments/sections/" + sectionNo)
+                                .param("studentId", String.valueOf(studentId))
+                                .accept(MediaType.APPLICATION_JSON)
+                                .contentType(MediaType.APPLICATION_JSON))
+                .andReturn()
+                .getResponse();
+
+        // Check the response code for 200 meaning OK
+        assertEquals(200, response.getStatus());
+
+        // Check the response content
+        EnrollmentDTO enrollment = fromJsonString(response.getContentAsString(), EnrollmentDTO.class);
+
+        // Ensure the enrollment ID is returned and is not zero
+        assertNotEquals(0, enrollment.enrollmentId());
+
+        // Ensure the section and student details match
+        assertEquals(sectionNo, enrollment.sectionNo());
+        assertEquals(studentId, enrollment.studentId());
+
+        // Check the database for the enrollment
+        Enrollment e = enrollmentRepository.findEnrollmentBySectionNoAndStudentId(sectionNo, studentId);
+        assertNotNull(e);
+        assertEquals(studentId, e.getStudent().getId());
+        assertEquals(sectionNo, e.getSection().getSectionNo());
+    }
 
     @Test
     public void studentFailsToEnrollInSectionAlreadyEnrolled() throws Exception {
@@ -234,11 +233,18 @@ public class SectionControllerUnitTest {
         Section section = sectionRepository.findById(sectionNo).orElse(null);
         assertNotNull(section);
 
-        // Ensure the student is already enrolled in the section
+        // Ensure the student exists in the database
         User student = userRepository.findById(studentId).orElse(null);
         assertNotNull(student);
 
-        Enrollment existingEnrollment = new Enrollment();
+        // Clear any existing enrollments for this student and section
+        Enrollment existingEnrollment = enrollmentRepository.findEnrollmentBySectionNoAndStudentId(sectionNo, studentId);
+        if (existingEnrollment != null) {
+            enrollmentRepository.delete(existingEnrollment);
+        }
+
+        // Ensure the student is already enrolled in the section
+        existingEnrollment = new Enrollment();
         existingEnrollment.setStudent(student);
         existingEnrollment.setSection(section);
         enrollmentRepository.save(existingEnrollment);
@@ -260,6 +266,9 @@ public class SectionControllerUnitTest {
         String errorMessage = response.getErrorMessage();
         assertEquals("already enrolled in this section", errorMessage);
     }
+
+
+
 
     private static String asJsonString(final Object obj) {
         try {
